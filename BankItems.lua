@@ -1,6 +1,6 @@
 ﻿--[[	*****************************************************************
-	BankItems v2.56
-	2021-January-10
+	BankItems v2.6
+	2022-january-20
 
 	Author: Xinhuan @ US Blackrock Alliance
 	*****************************************************************
@@ -88,6 +88,7 @@ Xinhuan's Note:
 -- FIXED: Fixed extra spaces that can appear on "/bi list".
 -- FIXED: Removed invisible "unclickable" space below the BankItems main bank frame.
 -- FIXED: Fixed error due to ContainerIDToInventoryID(bagID) API change. Inputs outside the range of 1-11 (4 bag and 7 bank) are no longer valid input.
+
 -- NEW: FuBar and Titan Panel plugins for BankItems are now available.
 --
 -- Because up to 12 possible bags can be displayed, users are adviced to change the scale in the GUI options.
@@ -197,8 +198,15 @@ Xinhuan's Note:
 
 -- 2021-05-31 Baroque edit, version 2.57, updated for BCC 2.5.1
 
+-- 2021? Added modern minimap button
+-- 2022-01-20 Updated for WOTLK Classic Ulduar patch - C_Container, 
+--            PLAYER_INTERACTION_MANAGER_FRAME_HIDE/SHOW, GetContainerItemInfo changes
+
 
 --]]
+
+local LDB = LibStub("LibDataBroker-1.1")
+local LDBIcon = LibStub("LibDBIcon-1.0")
 
 BankItems_Save			= {}		-- table, SavedVariable, can't be local
 local bankPlayer		= nil		-- table reference
@@ -223,6 +231,8 @@ BankItems_TooltipCache = {} -- table, contains a cache of tooltip lines that hav
 -- Some constants
 local BANKITEMS_BOTTOM_SCREEN_LIMIT	= 80				-- Pixels from bottom not to overlap BankItem bags
 local BANKITEMS_UCFA = updateContainerFrameAnchors	-- Remember Blizzard's UCFA for NON-SAFE replacement
+local MAIN_BANK_BUTTONS = 28 -- 28 (classic 24) main bank buttons
+local BANK_COLUMNS = 7
 local BAGNUMBERS = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 100}	-- List of bag numbers used internally by BankItems (11 and 101 removed for Classic)
 local BAGNUMBERSPLUSMAIL = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 100, 101}	-- List of bag numbers used internally by BankItems (11 removed for Classic)
 -- 0 through 4 are the player's bags, to be shown in reverse order, preceded by 100, the player's equipment
@@ -256,7 +266,7 @@ local BANKITEMS_INVSLOT = {
 -- Localize some globals
 local pairs, ipairs = pairs, ipairs
 local gsub, strfind, strlower, strmatch, strsplit = gsub, strfind, strlower, strmatch, strsplit
-local GetContainerItemLink, GetContainerItemInfo = GetContainerItemLink, GetContainerItemInfo
+local GetContainerItemLink = C_Container.GetContainerItemLink
 local GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink = GetInboxHeaderInfo, GetInboxItem, GetInboxItemLink
 
 -- Localize some frame references
@@ -307,7 +317,7 @@ function BankItems_Button_OnClick(self, button)
 	if (bankPlayer[self:GetID()]) then
 		if ( IsControlKeyDown() ) then
 			DressUpItemLink(bankPlayer[self:GetID()].link)
-		elseif ( button and button == "LeftButton" and IsShiftKeyDown() and ChatEdit_GetActiveWindow():IsVisible() ) then
+		elseif ( button == "LeftButton" and IsShiftKeyDown() and ChatEdit_GetActiveWindow():IsVisible() ) then
 			ChatEdit_GetActiveWindow():Insert(bankPlayer[self:GetID()].link)
 		end
 	end
@@ -341,7 +351,7 @@ function BankItems_Bag_OnClick(self, button)
 		return
 	end
 
-	if (button and button == "LeftButton" and IsShiftKeyDown() and ChatEdit_GetActiveWindow():IsVisible() and bagID and bagID > 0 and bagID <= 11) then
+	if (button == "LeftButton" and IsShiftKeyDown() and ChatEdit_GetActiveWindow():IsVisible() and bagID > 0 and bagID <= 10) then
 		ChatEdit_GetActiveWindow():Insert(theBag.link)
 		return
 	end
@@ -561,7 +571,7 @@ function BankItems_BagItem_OnClick(self, button)
 			if (type(item.link) ~= "number") then
 				DressUpItemLink(item.link)
 			end
-		elseif ( button and button == "LeftButton" and IsShiftKeyDown() and ChatEdit_GetActiveWindow():IsVisible() ) then
+		elseif ( button == "LeftButton" and IsShiftKeyDown() and ChatEdit_GetActiveWindow():IsVisible() ) then
 			if (type(item.link) == "number") then
 				ChatEdit_GetActiveWindow():Insert(BankItem_ParseMoney(item.link))
 			else
@@ -665,8 +675,8 @@ function BankItems_Frame_OnEvent(self, event, ...)
 			updated for the item when the event fires even if events for additional bank slots
 			for that item haven't fired yet. The additional bank slot events for each item
 			could be delayed a few seconds from the first event set.--]]
-			if arg1 and bankSlotsToUpdate then
-				bankSlotsToUpdate[#bankSlotsToUpdate + 1] = tonumber(arg1)
+			if arg1 then
+				--bankSlotsToUpdate[#bankSlotsToUpdate + 1] = tonumber(arg1)   --REVISIT what is this?
 				BankItems_UpdateFrame:SetScript("OnUpdate", BankItems_UpdateFrame_OnUpdate)
 			end
 		elseif arg1 and arg1 <= NUM_BANKGENERIC_SLOTS then
@@ -674,16 +684,17 @@ function BankItems_Frame_OnEvent(self, event, ...)
 			BankItems_UpdateFrame:SetScript("OnUpdate", BankItems_UpdateFrame_OnUpdate)
 		end
 
-	elseif event == "BANKFRAME_OPENED" then
-		isBankOpen = true
-		BankItems_SaveItems()
-		BankItems_Generate_SelfItemCache()
+	elseif event == "PLAYER_INTERACTION_MANAGER_FRAME_SHOW" then
+	    if arg1 == Enum.PlayerInteractionType.Banker then
+			isBankOpen = true
+			BankItems_SaveItems()
+			BankItems_Generate_SelfItemCache()
+		end
 
-	elseif event == "BANKFRAME_CLOSED" then
-		-- Hawksy: trying the following two lines (didn't seem to help)
-		BankItems_SaveItems()
-		BankItems_Generate_SelfItemCache()
-		isBankOpen = false
+	elseif event == "PLAYER_INTERACTION_MANAGER_FRAME_HIDE" then
+	    if arg1 == Enum.PlayerInteractionType.Banker then
+			isBankOpen = false
+		end
 
 	elseif event == "MAIL_SHOW" then
 		BankItems_Frame:RegisterEvent("MAIL_CLOSED")
@@ -740,7 +751,6 @@ function BankItems_UpdateFrame_OnUpdate(self, elapsed)
 	self:SetScript("OnUpdate", nil)
 end
 
-
 ----------------------------------
 -- Create frames
 
@@ -750,7 +760,7 @@ do
 	-- Create the main BankItems frame
 	BankItems_Frame = CreateFrame("Frame", "BankItems_Frame", UIParent)
 	BankItems_Frame:Hide()
-	BankItems_Frame:SetWidth(403)
+	BankItems_Frame:SetWidth(453) -- classic 403
 	BankItems_Frame:SetHeight(430)
 	BankItems_Frame:SetPoint("TOPLEFT", 50, -104)
 	BankItems_Frame:EnableMouse(true)
@@ -807,13 +817,13 @@ do
 
 	-- Close Button (inherits OnClick script to HideUIPanel(this:GetParent()))
 	temp = CreateFrame("Button", "BankItems_CloseButton", BankItems_Frame, "UIPanelCloseButton")
-	temp:SetPoint("TOPRIGHT", 0, -8)
+	temp:SetPoint("TOPRIGHT", -50, -8)
 
 	-- Options Button
 	temp = CreateFrame("Button", "BankItems_OptionsButton", BankItems_Frame, "GameMenuButtonTemplate")
 	temp:SetWidth(85)
 	temp:SetHeight(25)
-	temp:SetPoint("TOPRIGHT", -20, -40)
+	temp:SetPoint("TOPRIGHT", -70, -40)
 	temp:SetText(BANKITEMS_OPTION_TEXT)
 	temp:SetScript("OnClick", function()
 		if (BankItems_OptionsFrame:IsVisible()) then
@@ -825,14 +835,14 @@ do
 
 	-- had problems with ItemButtonTemplate, ItemButton isn't in classic, now seems to work anyway
 
-	-- Create the 28 (classic 28) main bank buttons
-	for i = 1, 28 do
+	-- Create the 28 (classic 24) main bank buttons
+	for i = 1, MAIN_BANK_BUTTONS do
 		ItemButtonAr[i] = CreateFrame("Button", "BankItems_Item"..i, BankItems_Frame, "ItemButtonTemplate")
 		ItemButtonAr[i]:SetID(i)
 		if (i == 1) then
 			ItemButtonAr[i]:SetPoint("TOPLEFT", 40, -73)
-		elseif (mod(i, 7) == 1) then
-			ItemButtonAr[i]:SetPoint("TOPLEFT", ItemButtonAr[i-7], "BOTTOMLEFT", 0, -7)
+		elseif (mod(i, BANK_COLUMNS) == 1) then
+			ItemButtonAr[i]:SetPoint("TOPLEFT", ItemButtonAr[i-BANK_COLUMNS], "BOTTOMLEFT", 0, -7)
 		else
 			ItemButtonAr[i]:SetPoint("TOPLEFT", ItemButtonAr[i-1], "TOPRIGHT", 12, 0)
 		end
@@ -840,7 +850,7 @@ do
 		ItemButtonAr[i].texture = _G["BankItems_Item"..i.."IconTexture"]
 	end
 
-	-- Create the 14 (classic 13) bag buttons
+	-- Create the 14 (classic 12) bag buttons
 	for _, i in ipairs(BAGNUMBERS) do
 		BagButtonAr[i] = CreateFrame("Button", "BankItems_Bag"..i, BankItems_Frame, "ItemButtonTemplate")
 		BagButtonAr[i]:SetID(i)
@@ -853,14 +863,14 @@ do
 		BagButtonAr[i].count = _G["BankItems_Bag"..i.."Count"]
 		BagButtonAr[i].texture = _G["BankItems_Bag"..i.."IconTexture"]
 	end
-	BagButtonAr[5]:SetPoint("TOPLEFT", ItemButtonAr[22], "BOTTOMLEFT", 0, -33) -- top row, bank bags
+	BagButtonAr[5]:SetPoint("TOPLEFT", ItemButtonAr[BANK_COLUMNS*3+1], "BOTTOMLEFT", 0, -33) -- top row, bank bags --19
 	BagButtonAr[6]:SetPoint("TOPLEFT", BagButtonAr[5], "TOPRIGHT", 12, 0)
 	BagButtonAr[7]:SetPoint("TOPLEFT", BagButtonAr[6], "TOPRIGHT", 12, 0)
 	BagButtonAr[8]:SetPoint("TOPLEFT", BagButtonAr[7], "TOPRIGHT", 12, 0)
 	BagButtonAr[9]:SetPoint("TOPLEFT", BagButtonAr[8], "TOPRIGHT", 12, 0)
 	BagButtonAr[10]:SetPoint("TOPLEFT", BagButtonAr[9], "TOPRIGHT", 12, 0)
 	BagButtonAr[11]:SetPoint("TOPLEFT", BagButtonAr[10], "TOPRIGHT", 12, 0)
-	BagButtonAr[100]:SetPoint("TOPLEFT", BagButtonAr[5], "BOTTOMLEFT", 0, -6) -- bottom row, player bags
+	BagButtonAr[100]:SetPoint("TOPLEFT", BagButtonAr[6], "BOTTOMLEFT", 0, -6) -- bottom row, player bags
 	BagButtonAr[4]:SetPoint("TOPLEFT", BagButtonAr[100], "TOPRIGHT", 12, 0)
 	BagButtonAr[3]:SetPoint("TOPLEFT", BagButtonAr[4], "TOPRIGHT", 12, 0)
 	BagButtonAr[2]:SetPoint("TOPLEFT", BagButtonAr[3], "TOPRIGHT", 12, 0)
@@ -869,7 +879,7 @@ do
 
 	-- Create the Money frame
 	CreateFrame("Frame", "BankItems_MoneyFrame", BankItems_Frame, "SmallMoneyFrameTemplate")
-	BankItems_MoneyFrame:SetPoint("BOTTOMRIGHT", -20, 20)
+	BankItems_MoneyFrame:SetPoint("BOTTOMRIGHT", -60, 20)
 	BankItems_MoneyFrame:UnregisterAllEvents()
 	BankItems_MoneyFrame:SetScript("OnEvent", nil)
 	BankItems_MoneyFrame:SetScript("OnShow", nil)
@@ -898,7 +908,7 @@ do
 	BankItems_TotalMoneyText:SetJustifyH("LEFT")
 	BankItems_TotalMoneyText:SetPoint("LEFT", "BankItems_MoneyFrameTotalCopperButton", "RIGHT")
 
-	-- Create the 14 (classic 1) bags
+	-- Create the 14 (classic 12) bags
 	for _, i in ipairs(BAGNUMBERS) do
 		local name = "BankItems_ContainerFrame"..i
 		BagContainerAr[i] = CreateFrame("Frame", name, UIParent)
@@ -930,7 +940,7 @@ do
 		BagContainerAr[i].name:SetWidth(112)
 		BagContainerAr[i].name:SetHeight(12)
 		BagContainerAr[i].name:SetPoint("TOPLEFT", 47, -10)
-		for j = 1, 36 do
+		for j = 1, #BAGNUMBERS+MAIN_BANK_BUTTONS do --36
 			BagContainerAr[i][j] = CreateFrame("Button", name.."Item"..j, BagContainerAr[i], "ItemButtonTemplate")
 			BagContainerAr[i][j]:SetID(j)
 			BagContainerAr[i][j].count = _G[name.."Item"..j.."Count"]
@@ -964,16 +974,16 @@ do
 
 	-- Create the User Dropdown
 	CreateFrame("Frame", "BankItems_UserDropdown", BankItems_Frame, "UIDropDownMenuTemplate")
-	BankItems_UserDropdown:SetPoint("TOPRIGHT", BankItems_Frame, "BOTTOMRIGHT", -75, 69)
+	BankItems_UserDropdown:SetPoint("TOPRIGHT", BankItems_Frame, "BOTTOMRIGHT", -110, 69)
 	BankItems_UserDropdown:SetHitRectInsets(16, 16, 0, 0)
-	UIDropDownMenu_SetWidth(BankItems_UserDropdown, 175)
+	UIDropDownMenu_SetWidth(BankItems_UserDropdown, 140)
 	UIDropDownMenu_EnableDropDown(BankItems_UserDropdown)
 
 	-- Create the Export Button
 	CreateFrame("Button", "BankItems_ExportButton", BankItems_Frame)
 	BankItems_ExportButton:SetWidth(32)
 	BankItems_ExportButton:SetHeight(32)
-	BankItems_ExportButton:SetPoint("TOPRIGHT", BankItems_Frame, "BOTTOMRIGHT", -53, 71)
+	BankItems_ExportButton:SetPoint("TOPRIGHT", BankItems_Frame, "BOTTOMRIGHT", -93, 71)
 	BankItems_ExportButton:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
 	BankItems_ExportButton:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
 	BankItems_ExportButton:SetDisabledTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Disabled")
@@ -983,7 +993,7 @@ do
 	CreateFrame("Button", "BankItems_SearchButton", BankItems_Frame)
 	BankItems_SearchButton:SetWidth(32)
 	BankItems_SearchButton:SetHeight(32)
-	BankItems_SearchButton:SetPoint("TOPRIGHT", BankItems_Frame, "BOTTOMRIGHT", -15, 71)
+	BankItems_SearchButton:SetPoint("TOPRIGHT", BankItems_Frame, "BOTTOMRIGHT", -65, 71)
 	BankItems_SearchButton:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
 	BankItems_SearchButton:SetPushedTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Down")
 	BankItems_SearchButton:SetDisabledTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Disabled")
@@ -1253,13 +1263,15 @@ function BankItems_SaveZone()
 end
 
 function BankItems_SaveItems()
-	local itemLink, bagNum_ID
+	local itemLink, bagNum_ID, containerInfo 
 	if (isBankOpen) then
-		for num = 1, 28 do
-			itemLink = GetContainerItemLink(BANK_CONTAINER, num)
+		for num = 1, MAIN_BANK_BUTTONS do
+			itemLink = C_Container.GetContainerItemLink(BANK_CONTAINER, num)
 			if (itemLink) then
 				selfPlayer[num] = selfPlayer[num] or newTable()
-				selfPlayer[num].icon, selfPlayer[num].count = GetContainerItemInfo(BANK_CONTAINER, num)
+				containerInfo  = C_Container.GetContainerItemInfo(BANK_CONTAINER, num)
+				selfPlayer[num].icon = containerInfo.iconFileID
+				selfPlayer[num].count = containerInfo.stackCount
 				selfPlayer[num].link = itemLink
 			else
 				delTable(selfPlayer[num])
@@ -1274,13 +1286,15 @@ function BankItems_SaveItems()
 				local theBag = selfPlayer["Bag"..bagNum]
 				theBag.link = itemLink
 				theBag.icon = GetInventoryItemTexture("player", bagNum_ID)
-				theBag.size = GetContainerNumSlots(bagNum)
+				theBag.size = C_Container.GetContainerNumSlots(bagNum)
 				for bagItem = 1, theBag.size do
-					itemLink = GetContainerItemLink(bagNum, bagItem)
+					itemLink = C_Container.GetContainerItemLink(bagNum, bagItem)
 					if (itemLink) then
 						theBag[bagItem] = theBag[bagItem] or newTable()
 						theBag[bagItem].link = itemLink
-						theBag[bagItem].icon, theBag[bagItem].count = GetContainerItemInfo(bagNum, bagItem)
+						containerInfo  = C_Container.GetContainerItemInfo(bagNum, bagItem)
+						theBag[bagItem].icon = containerInfo.iconFileID
+						theBag[bagItem].count = containerInfo.stackCount
 					else
 						delTable(theBag[bagItem])
 						theBag[bagItem] = nil
@@ -1310,6 +1324,7 @@ function BankItems_SaveInvItems(bagID)
 	-- or nil to update all bags and worn items
 	local startBag, endBag
 	local itemLink, bagNum_ID
+	local containerInfo 
 
 	-- if bagID is present, only update that bag
 	if (bagID == "inv") then
@@ -1335,15 +1350,15 @@ function BankItems_SaveInvItems(bagID)
 			selfPlayer[bagString] = selfPlayer[bagString] or newTable()
 			selfPlayer[bagString].link = nil
 			selfPlayer[bagString].icon = "Interface\\Buttons\\Button-Backpack-Up"
-			selfPlayer[bagString].size = GetContainerNumSlots(bagNum)
+			selfPlayer[bagString].size = C_Container.GetContainerNumSlots(bagNum)
 		else
-			bagNum_ID = ContainerIDToInventoryID(bagNum)
+			bagNum_ID = C_Container.ContainerIDToInventoryID(bagNum)
 			itemLink = GetInventoryItemLink("player", bagNum_ID)
 			if (itemLink) then
 				selfPlayer[bagString] = selfPlayer[bagString] or newTable()
 				selfPlayer[bagString].link = itemLink
 				selfPlayer[bagString].icon = GetInventoryItemTexture("player", bagNum_ID)
-				selfPlayer[bagString].size = GetContainerNumSlots(bagNum)
+				selfPlayer[bagString].size = C_Container.GetContainerNumSlots(bagNum)
 			else
 				delTable(selfPlayer[bagString])
 				selfPlayer[bagString] = nil
@@ -1356,11 +1371,13 @@ function BankItems_SaveInvItems(bagID)
 		local theBag = selfPlayer[bagString]
 		if (theBag) then
 			for bagItem = 1, theBag.size do
-				itemLink = GetContainerItemLink(bagNum, bagItem)
+				itemLink = C_Container.GetContainerItemLink(bagNum, bagItem)
 				if (itemLink) then
 					theBag[bagItem] = theBag[bagItem] or newTable()
 					theBag[bagItem].link = itemLink
-					theBag[bagItem].icon, theBag[bagItem].count = GetContainerItemInfo(bagNum, bagItem)
+					containerInfo  = C_Container.GetContainerItemInfo(bagNum, bagItem)
+					theBag[bagItem].icon = containerInfo["iconFileID"]
+					theBag[bagItem].count = containerInfo["stackCount"]
 				else
 					delTable(theBag[bagItem])
 					theBag[bagItem] = nil
@@ -1495,11 +1512,12 @@ function BankItems_PopulateFrame()
 	else
 		BankItems_Portrait:SetTexture("Interface\\QuestFrame\\UI-QuestLog-BookIcon")
 	end
-	-- 28 bank slots
-	for i = 1, 28 do
+	-- 24 bank slots
+	for i = 1, MAIN_BANK_BUTTONS do
 		if ( bankPlayer[i] ) then
 			ItemButtonAr[i].texture:SetTexture(bankPlayer[i].icon)
-			if (bankPlayer[i].count > 1) then
+			--print(unpack(bankPlayer[i]))
+			if (bankPlayer[i].count and bankPlayer[i].count > 1) then
 				ItemButtonAr[i].count:Show()
 				ItemButtonAr[i].count:SetText(bankPlayer[i].count)
 			else
@@ -1787,7 +1805,7 @@ function BankItems_GenerateExportText()
 		-- Group similar items together in the report
 		local data = newTable()
 		local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture
-		for num = 1, 28 do
+		for num = 1, MAIN_BANK_BUTTONS do
 			if (bankPlayer[num]) then
 				itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemTexture = GetItemInfo(bankPlayer[num].link)
 				if (itemType) then
@@ -1842,7 +1860,7 @@ function BankItems_GenerateExportText()
 		delTable(data)
 	else
 		-- Don't group similar items together in the report
-		for num = 1, 28 do
+		for num = 1, MAIN_BANK_BUTTONS do
 			if bankPlayer[num] then
 				if BankItems_Save.ExportPrefix then
 					prefix = "Bank Item "..num..": "
@@ -1890,7 +1908,7 @@ function BankItems_Search(searchText)
 		for key, bankPlayer in pairs(BankItems_Save) do
 			local _, realm = strsplit("|", key)
 			if (type(bankPlayer) == "table" and (BankItems_Save.SearchAllRealms or realm == selfPlayerRealm) and key ~= "Behavior") then
-				for num = 1, 28 do
+				for num = 1, MAIN_BANK_BUTTONS do
 					if (bankPlayer[num]) then
 						temp = strmatch(bankPlayer[num].link, "%[(.*)%]")
 						if strfind(strlower(temp), searchText, 1, true) then
@@ -1964,7 +1982,7 @@ function BankItems_Search(searchText)
 			local _, realm = strsplit("|", key)
 			if (type(bankPlayer) == "table" and (BankItems_Save.SearchAllRealms or realm == selfPlayerRealm) and key ~= "Behavior") then
 				count = 0
-				for num = 1, 28 do
+				for num = 1, MAIN_BANK_BUTTONS do
 					if ( bankPlayer[num] and bankPlayer[num].link ) then
 						if (BankItems_Save.ExportPrefix) then
 							prefix = "     Bank Item "..num..": "
@@ -2335,7 +2353,7 @@ end
 -- Set scripts of the various widgets
 
 -- The 28 main bank buttons
-for i = 1, 28 do
+for i = 1, MAIN_BANK_BUTTONS do
 	ItemButtonAr[i]:SetScript("OnLeave", BankItems_Button_OnLeave)
 	ItemButtonAr[i]:SetScript("OnEnter", BankItems_Button_OnEnter)
 	ItemButtonAr[i]:SetScript("OnClick", BankItems_Button_OnClick)
@@ -2407,8 +2425,8 @@ BankItems_Frame:RegisterEvent("PLAYER_MONEY")
 BankItems_Frame:RegisterEvent("ZONE_CHANGED")
 BankItems_Frame:RegisterEvent("ZONE_CHANGED_INDOORS")
 BankItems_Frame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-BankItems_Frame:RegisterEvent("BANKFRAME_OPENED")
-BankItems_Frame:RegisterEvent("BANKFRAME_CLOSED")
+BankItems_Frame:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_SHOW")
+BankItems_Frame:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_HIDE")
 BankItems_Frame:RegisterEvent("PLAYERBANKSLOTS_CHANGED")
 BankItems_Frame:RegisterEvent("PLAYERBANKBAGSLOTS_CHANGED")
 BankItems_Frame:RegisterEvent("BAG_UPDATE")
@@ -2427,7 +2445,6 @@ function BankItems_AddTooltipData(self, ...)
 	in case Blizzard adds return values to more functions.]]
 	if self.BankItemsDone then return ... end
 	local _, link = self:GetItem()
-	-- Hawksy for some reason Classic doesn't have item for materials in enchanting window, so we just get 'nil' here
 	local item = link and tonumber(link:match("item:(%d+)"))
 	if not item or item == 0 then --tooltip item not found or returned item id as 0 so check BankItems_Link assigned by hooks
 		link = self.BankItems_Link
@@ -2578,7 +2595,7 @@ function BankItems_Hooktooltip(tooltip)
 	end
 	local e = tooltip.SetCurrencyToken
 	tooltip.SetCurrencyToken = function(self, ...)
-		self.BankItems_Link = GetCurrencyListLink(...)
+		self.BankItems_Link = C_Container.GetCurrencyListLink(...)
 		e(self, ...)
 		BankItems_AddTooltipData(self)
 	end
@@ -2719,94 +2736,37 @@ tinsert(UISpecialFrames, "BankItems_ExportFrame")
 ---------------------------------------------------------------------------------------
 -- Minimap Button
 
-CreateFrame("Button", "BankItems_MinimapButton", Minimap)
-BankItems_MinimapButton:EnableMouse(true)
-BankItems_MinimapButton:SetMovable(false)
-BankItems_MinimapButton:SetFrameStrata("LOW")
-BankItems_MinimapButton:SetWidth(33)
-BankItems_MinimapButton:SetHeight(33)
-BankItems_MinimapButton:SetPoint("TOPLEFT", Minimap, "RIGHT", 2, 0)
-BankItems_MinimapButton:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
 
-BankItems_MinimapButton:CreateTexture("BankItems_MinimapButtonIcon", "BORDER")
-BankItems_MinimapButtonIcon:SetWidth(20)
-BankItems_MinimapButtonIcon:SetHeight(20)
-BankItems_MinimapButtonIcon:SetPoint("CENTER", -2, 1)
-BankItems_MinimapButtonIcon:SetTexture("Interface\\Icons\\INV_Misc_Bag_10_Blue")
 
-BankItems_MinimapButton:CreateTexture("BankItems_MinimapButtonBorder", "OVERLAY")
-BankItems_MinimapButtonBorder:SetWidth(52)
-BankItems_MinimapButtonBorder:SetHeight(52)
-BankItems_MinimapButtonBorder:SetPoint("TOPLEFT")
-BankItems_MinimapButtonBorder:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-
-function BankItems_MinimapButton_Init()
-	-- Initialise defaults if not present
-	if (BankItems_Save.ButtonShown == false) then
-		BankItems_MinimapButton:Hide()
-		BankItems_Save.ButtonShown = false
+function ShowMinimap()
+	if BankItems_Save.ButtonShown then
+		LDBIcon:Show("BankItems")
 	else
-		BankItems_MinimapButton:Show()
-		BankItems_Save.ButtonShown = true
-	end
-	BankItems_Save.ButtonRadius = BankItems_Save.ButtonRadius or 78
-	BankItems_Save.ButtonPosition = BankItems_Save.ButtonPosition or 345
-	BankItems_MinimapButton_UpdatePosition()
-end
-
-function BankItems_MinimapButton_UpdatePosition()
-	BankItems_MinimapButton:SetPoint(
-		"TOPLEFT",
-		"Minimap",
-		"TOPLEFT",
-		54 - (BankItems_Save.ButtonRadius * cos(BankItems_Save.ButtonPosition)),
-		(BankItems_Save.ButtonRadius * sin(BankItems_Save.ButtonPosition)) - 55
-	)
-end
-
--- Thanks to Yatlas for this code
-function BankItems_MinimapButton_BeingDragged()
-	-- Thanks to Gello for this code
-	local xpos,ypos = GetCursorPosition()
-	local xmin,ymin = Minimap:GetLeft(), Minimap:GetBottom()
-
-	xpos = xmin-xpos/UIParent:GetScale()+70
-	ypos = ypos/UIParent:GetScale()-ymin-70
-
-	local v = math.deg(math.atan2(ypos, xpos))
-	if (v < 0) then
-		v = v + 360
-	end
-	BankItems_Save.ButtonPosition = v
-	BankItems_MinimapButton_UpdatePosition()
-
-	if (BankItems_OptionsFrame:IsVisible()) then
-		BankItems_ButtonRadiusSlider:SetValue(BankItems_Save.ButtonRadius)
-		BankItems_ButtonPosSlider:SetValue(BankItems_Save.ButtonPosition)
+		LDBIcon:Hide("BankItems")
 	end
 end
 
-BankItems_MinimapButton:RegisterEvent("VARIABLES_LOADED")
-BankItems_MinimapButton:RegisterForDrag("RightButton")
-BankItems_MinimapButton:SetScript("OnDragStart", function(self)
-	self:SetScript("OnUpdate", BankItems_MinimapButton_BeingDragged)
-end)
-BankItems_MinimapButton:SetScript("OnDragStop", function(self)
-	self:SetScript("OnUpdate", nil)
-end)
-BankItems_MinimapButton:SetScript("OnClick", function(self)
-	BankItems_SlashHandler()
-end)
-BankItems_MinimapButton:SetScript("OnEnter", function(self)
-	GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-	GameTooltip:SetText(BANKITEMS_MINIMAPBUTTON_TOOLTIP)
-	GameTooltip:AddLine(BANKITEMS_MINIMAPBUTTON_TOOLTIP2)
-	GameTooltip:AddLine(BANKITEMS_MINIMAPBUTTON_TOOLTIP3)
-	GameTooltip:Show()
-end)
-BankItems_MinimapButton:SetScript("OnLeave", BankItems_Button_OnLeave)
-BankItems_MinimapButton:SetScript("OnEvent", BankItems_MinimapButton_Init)
 
+Broker = LibStub:GetLibrary("LibDataBroker-1.1"):NewDataObject("BankItems", {
+	type = "launcher",
+  text = "BankItems",
+	icon = "Interface\\Icons\\INV_Misc_Bag_10_Blue",
+  OnClick = function(self)
+    BankItems_SlashHandler()
+  end,
+  OnEnter = function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    GameTooltip:SetText(BANKITEMS_MINIMAPBUTTON_TOOLTIP)
+    GameTooltip:AddLine(BANKITEMS_MINIMAPBUTTON_TOOLTIP2)
+    GameTooltip:AddLine(BANKITEMS_MINIMAPBUTTON_TOOLTIP3)
+    GameTooltip:Show()
+  end,
+  OnLeave = BankItems_Button_OnLeave
+  --OnTooltipShow = ItemRack.MinimapOnEnter,
+})
+
+LDBIcon:Register("BankItems", Broker, BankItems_Save.ButtonShown)
+ShowMinimap()
 
 ---------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------
@@ -2824,8 +2784,7 @@ do
 	}
 
 	-- Create the BankItems Options frame
-	BankItems_OptionsFrame = CreateFrame("Frame", "BankItems_OptionsFrame", UIParent, "DialogBoxFrame")
-	--BankItems_OptionsFrame = CreateFrame("Frame", "BankItems_OptionsFrame", UIParent)
+	BankItems_OptionsFrame = CreateFrame("Frame", "BankItems_OptionsFrame", UIParent, BackdropTemplateMixin and "BackdropTemplate")
 	BankItems_OptionsFrame:Hide()
 	BankItems_OptionsFrame:SetWidth(300)
 	BankItems_OptionsFrame:SetHeight(330)
@@ -2872,10 +2831,10 @@ do
 	BankItems_OptionsFrame_MinimapButton:SetScript("OnClick", function(self)
 		if (BankItems_Save.ButtonShown) then
 			BankItems_Save.ButtonShown = false
-			BankItems_MinimapButton:Hide()
+			LDBIcon:Hide("BankItems")
 		else
 			BankItems_Save.ButtonShown = true
-			BankItems_MinimapButton:Show()
+			LDBIcon:Show("BankItems")
 		end
 		self:SetChecked(BankItems_Save.ButtonShown)
 	end)
@@ -2937,37 +2896,6 @@ do
 	BankItems_BehaviorDropDown_Text:SetPoint("BOTTOMLEFT", BankItems_BehaviorDropDown, "TOPLEFT", 21, 1)
 	BankItems_BehaviorDropDown_Text:SetText(BANKITEMS_BEHAVIOR_TEXT)
 
-	-- Minimap Button Radius slider
-	CreateFrame("Slider", "BankItems_ButtonRadiusSlider", BankItems_OptionsFrame, "OptionsSliderTemplate")
-	BankItems_ButtonRadiusSlider:SetWidth(240)
-	BankItems_ButtonRadiusSlider:SetHeight(16)
-	BankItems_ButtonRadiusSlider:SetPoint("TOP", 0, -170)
-	BankItems_ButtonRadiusSliderText:SetText(BANKITEMS_BUTTONRADIUS_TEXT)
-	BankItems_ButtonRadiusSliderLow:SetText("0")
-	BankItems_ButtonRadiusSliderHigh:SetText("200")
-	BankItems_ButtonRadiusSlider:SetMinMaxValues(0,200)
-	BankItems_ButtonRadiusSlider:SetValueStep(1)
-	BankItems_ButtonRadiusSlider:SetScript("OnValueChanged", function(self, value)
-		BankItems_ButtonRadiusSliderText:SetText(BANKITEMS_BUTTONRADIUS_TEXT.." "..value)
-		BankItems_Save.ButtonRadius = value
-		BankItems_MinimapButton_UpdatePosition()
-	end)
-
-	-- Minimap Button Position slider
-	CreateFrame("Slider", "BankItems_ButtonPosSlider", BankItems_OptionsFrame, "OptionsSliderTemplate")
-	BankItems_ButtonPosSlider:SetWidth(240)
-	BankItems_ButtonPosSlider:SetHeight(16)
-	BankItems_ButtonPosSlider:SetPoint("TOP", 0, -200)
-	BankItems_ButtonPosSliderText:SetText(BANKITEMS_BUTTONPOS_TEXT)
-	BankItems_ButtonPosSliderLow:SetText("0")
-	BankItems_ButtonPosSliderHigh:SetText("360")
-	BankItems_ButtonPosSlider:SetMinMaxValues(0, 360)
-	BankItems_ButtonPosSlider:SetValueStep(1)
-	BankItems_ButtonPosSlider:SetScript("OnValueChanged", function(self, value)
-		BankItems_ButtonPosSliderText:SetText(BANKITEMS_BUTTONPOS_TEXT.." "..value)
-		BankItems_Save.ButtonPosition = value
-		BankItems_MinimapButton_UpdatePosition()
-	end)
 
 	-- Transparency slider
 	CreateFrame("Slider", "BankItems_TransparencySlider", BankItems_OptionsFrame, "OptionsSliderTemplate")
@@ -3013,7 +2941,7 @@ do
 	-- Done button
 	CreateFrame("Button", "BankItems_OptionsFrameDone", BankItems_OptionsFrame, "OptionsButtonTemplate")
 	BankItems_OptionsFrameDone:SetPoint("BOTTOM", 0, 20)
-	--BankItems_OptionsFrameDone:SetText(DONE)
+	BankItems_OptionsFrameDone:SetText(DONE)
 	BankItems_OptionsFrameDone:SetScript("OnClick", function(self)
 		self:GetParent():Hide()
 	end)
@@ -3095,8 +3023,6 @@ function BankItems_Options_OnShow()
 	BankItems_OptionsFrame_MinimapButton:SetChecked(BankItems_Save.ButtonShown)
 	BankItems_OptionsFrame_WindowStyle:SetChecked(BankItems_Save.WindowStyle == 2)
 	BankItems_OptionsFrame_BagParent:SetChecked(BankItems_Save.BagParent == 2)
-	BankItems_ButtonRadiusSlider:SetValue(BankItems_Save.ButtonRadius)
-	BankItems_ButtonPosSlider:SetValue(BankItems_Save.ButtonPosition)
 	BankItems_TransparencySlider:SetValue(BankItems_Save.Transparency)
 	BankItems_ScaleSlider:SetValue(BankItems_Save.Scale)
 end
@@ -3122,7 +3048,7 @@ do
 	}
 
 	-- Create the BankItems Export frame
-	BankItems_ExportFrame = CreateFrame("Frame", "BankItems_ExportFrame", UIParent, "DialogBoxFrame")
+	BankItems_ExportFrame = CreateFrame("Frame", "BankItems_ExportFrame", UIParent, "DialogBoxFrame", BackdropTemplateMixin and "BackdropTemplate")
 	BankItems_ExportFrame:Hide()
 	BankItems_ExportFrame:SetWidth(500)
 	BankItems_ExportFrame:SetHeight(400)

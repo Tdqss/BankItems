@@ -17,7 +17,7 @@ BINDING_NAME_TOGGLEBANKITEMS		= "Toggle BankItems";
 BINDING_NAME_TOGGLEBANKITEMSALL		= "Toggle BankItems and all Bags";
 BINDING_NAME_TOGGLEBANKITEMSBANK	= "Toggle BankItems and all Bank Bags";
 
-BANKITEMS_VERSIONTEXT	= "BankItems BCC v2.57";
+BANKITEMS_VERSIONTEXT	= "BankItems WOTLK v26000";
 BANKITEMS_HELPTEXT1 	= "Type /bi or /bankitems to open BankItems";
 BANKITEMS_HELPTEXT2 	= "-- /bi all : open BankItems and all bags";
 BANKITEMS_HELPTEXT3 	= "-- /bi allbank : open BankItems and all bank bags only";
