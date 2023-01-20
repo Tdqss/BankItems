@@ -2595,7 +2595,7 @@ function BankItems_Hooktooltip(tooltip)
 	end
 	local e = tooltip.SetCurrencyToken
 	tooltip.SetCurrencyToken = function(self, ...)
-		self.BankItems_Link = C_Container.GetCurrencyListLink(...)
+		self.BankItems_Link = C_CurrencyInfo.GetCurrencyListLink(...)
 		e(self, ...)
 		BankItems_AddTooltipData(self)
 	end
