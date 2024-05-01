@@ -1,0 +1,25 @@
+## Interface: 40400
+## Title: BankItems Classic
+## Title-zhCN: 离线银行 BankItems
+## Title-zhTW: 離線銀行 BankItems
+## Version: 2.6
+## Notes: View bank, inventory, mail, equipped contents from any character
+## Author: Xinhuan
+## X-Category: Inventory
+## X-RelSite-UI.WoW: 1699
+## X-Email: xinhuan AT gmail DOT com
+## X-Donate: xinhuan AT gmail DOT com
+## SavedVariables: BankItems_Save
+
+localization-enUS.lua
+localization-koKR.lua
+localization-ruRU.lua
+localization-deDE.lua
+localization-frFR.lua
+localization-zhCN.lua
+localization-zhTW.lua
+localization-esES.lua
+localization-itIT.lua
+localization-ptBR.lua
+
+BankItems.lua
