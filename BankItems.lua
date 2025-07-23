@@ -2808,10 +2808,10 @@ do
 	temp:SetText(BANKITEMS_OPTIONS_TEXT)
 
 	-- Lock Window checkbox
-	CreateFrame("CheckButton", "BankItems_OptionsFrame_LockWindow", BankItems_OptionsFrame, "OptionsCheckButtonTemplate")
+	CreateFrame("CheckButton", "BankItems_OptionsFrame_LockWindow", BankItems_OptionsFrame, "SettingsCheckBoxControlTemplate ")
 	BankItems_OptionsFrame_LockWindow:SetPoint("TOPLEFT", 25, -25)
 	BankItems_OptionsFrame_LockWindow:SetHitRectInsets(0, -210, 0, 0)
-	BankItems_OptionsFrame_LockWindowText:SetText(BANKITEMS_LOCK_MAIN_WINDOW_TEXT)
+	BankItems_OptionsFrame_LockWindow.Text:SetText(BANKITEMS_LOCK_MAIN_WINDOW_TEXT)
 	BankItems_OptionsFrame_LockWindow:SetScript("OnClick", function(self)
 		if (BankItems_Save.LockWindow) then
 			BankItems_Save.LockWindow = false
@@ -2824,10 +2824,10 @@ do
 	end)
 
 	-- Minimap Button checkbox
-	CreateFrame("CheckButton", "BankItems_OptionsFrame_MinimapButton", BankItems_OptionsFrame, "OptionsCheckButtonTemplate")
+	CreateFrame("CheckButton", "BankItems_OptionsFrame_MinimapButton", BankItems_OptionsFrame, "SettingsCheckBoxControlTemplate ")
 	BankItems_OptionsFrame_MinimapButton:SetPoint("TOPLEFT", 25, -47)
 	BankItems_OptionsFrame_MinimapButton:SetHitRectInsets(0, -210, 0, 0)
-	BankItems_OptionsFrame_MinimapButtonText:SetText(BANKITEMS_MINIMAP_BUTTON_TEXT)
+	BankItems_OptionsFrame_MinimapButton.Text:SetText(BANKITEMS_MINIMAP_BUTTON_TEXT)
 	BankItems_OptionsFrame_MinimapButton:SetScript("OnClick", function(self)
 		if (BankItems_Save.ButtonShown) then
 			BankItems_Save.ButtonShown = false
@@ -2840,10 +2840,10 @@ do
 	end)
 
 	-- Window Style checkbox
-	CreateFrame("CheckButton", "BankItems_OptionsFrame_WindowStyle", BankItems_OptionsFrame, "OptionsCheckButtonTemplate")
+	CreateFrame("CheckButton", "BankItems_OptionsFrame_WindowStyle", BankItems_OptionsFrame, "SettingsCheckBoxControlTemplate ")
 	BankItems_OptionsFrame_WindowStyle:SetPoint("TOPLEFT", 25, -69)
 	BankItems_OptionsFrame_WindowStyle:SetHitRectInsets(0, -210, 0, 0)
-	BankItems_OptionsFrame_WindowStyleText:SetText(BANKITEMS_WINDOW_STYLE_TEXT)
+	BankItems_OptionsFrame_WindowStyle.Text:SetText(BANKITEMS_WINDOW_STYLE_TEXT)
 	BankItems_OptionsFrame_WindowStyle:SetScript("OnClick", function(self)
 		HideUIPanel(BankItems_Frame)
 		if (BankItems_Save.WindowStyle == 2) then
@@ -2861,10 +2861,10 @@ do
 	end)
 
 	-- Bag Parent checkbox
-	CreateFrame("CheckButton", "BankItems_OptionsFrame_BagParent", BankItems_OptionsFrame, "OptionsCheckButtonTemplate")
+	CreateFrame("CheckButton", "BankItems_OptionsFrame_BagParent", BankItems_OptionsFrame, "SettingsCheckBoxControlTemplate ")
 	BankItems_OptionsFrame_BagParent:SetPoint("TOPLEFT", 25, -91)
 	BankItems_OptionsFrame_BagParent:SetHitRectInsets(0, -210, 0, 0)
-	BankItems_OptionsFrame_BagParentText:SetText(BANKITEMS_BAGPARENT_TEXT)
+	BankItems_OptionsFrame_BagParent.Text:SetText(BANKITEMS_BAGPARENT_TEXT)
 	BankItems_OptionsFrame_BagParent:SetScript("OnClick", function(self)
 		BankItems_Frame_OnHide()
 		if (BankItems_Save.BagParent == 1) then
@@ -2939,7 +2939,7 @@ do
 
 
 	-- Done button
-	CreateFrame("Button", "BankItems_OptionsFrameDone", BankItems_OptionsFrame, "OptionsButtonTemplate")
+	CreateFrame("Button", "BankItems_OptionsFrameDone", BankItems_OptionsFrame, "UIPanelButtonTemplate")
 	BankItems_OptionsFrameDone:SetPoint("BOTTOM", 0, 20)
 	BankItems_OptionsFrameDone:SetText(DONE)
 	BankItems_OptionsFrameDone:SetScript("OnClick", function(self)
@@ -3065,10 +3065,10 @@ do
 	temp:SetText(BANKITEMS_VERSIONTEXT)
 
 	-- Group Data checkbox
-	CreateFrame("CheckButton", "BankItems_ExportFrame_GroupData", BankItems_ExportFrame, "OptionsCheckButtonTemplate")
+	CreateFrame("CheckButton", "BankItems_ExportFrame_GroupData", BankItems_ExportFrame, "SettingsCheckBoxControlTemplate ")
 	BankItems_ExportFrame_GroupData:SetPoint("BOTTOMLEFT", 5, 5)
 	BankItems_ExportFrame_GroupData:SetHitRectInsets(0, -100, 3, 0)
-	BankItems_ExportFrame_GroupDataText:SetText(BANKITEMS_GROUP_DATA_TEXT)
+	BankItems_ExportFrame_GroupData.Text:SetText(BANKITEMS_GROUP_DATA_TEXT)
 	BankItems_ExportFrame_GroupData:SetScript("OnClick", function(self)
 		if (BankItems_Save.GroupExportData) then
 			BankItems_Save.GroupExportData = false
@@ -3082,10 +3082,10 @@ do
 	end)
 
 	-- Show Bag Prefix checkbox
-	CreateFrame("CheckButton", "BankItems_ExportFrame_ShowBagPrefix", BankItems_ExportFrame, "OptionsCheckButtonTemplate")
+	CreateFrame("CheckButton", "BankItems_ExportFrame_ShowBagPrefix", BankItems_ExportFrame, "SettingsCheckBoxControlTemplate ")
 	BankItems_ExportFrame_ShowBagPrefix:SetPoint("BOTTOMLEFT", 5, 25)
 	BankItems_ExportFrame_ShowBagPrefix:SetHitRectInsets(0, -100, 0, 0)
-	BankItems_ExportFrame_ShowBagPrefixText:SetText(BANKITEMS_SHOW_BAG_PREFIX_TEXT)
+	BankItems_ExportFrame_ShowBagPrefix.Text:SetText(BANKITEMS_SHOW_BAG_PREFIX_TEXT)
 	BankItems_ExportFrame_ShowBagPrefix:SetScript("OnClick", function(self)
 		if (BankItems_Save.ExportPrefix) then
 			BankItems_Save.ExportPrefix = false
@@ -3115,10 +3115,10 @@ do
 	end)
 
 	-- Search All Realms checkbox
-	CreateFrame("CheckButton", "BankItems_ExportFrame_SearchAllRealms", BankItems_ExportFrame, "OptionsCheckButtonTemplate")
+	CreateFrame("CheckButton", "BankItems_ExportFrame_SearchAllRealms", BankItems_ExportFrame, "SettingsCheckBoxControlTemplate ")
 	BankItems_ExportFrame_SearchAllRealms:SetPoint("TOPLEFT", BankItems_ExportFrame_SearchTextbox, "BOTTOMLEFT", -10, 3)
 	BankItems_ExportFrame_SearchAllRealms:SetHitRectInsets(0, -60, 0, 0)
-	BankItems_ExportFrame_SearchAllRealmsText:SetText(BANKITEMS_ALL_REALMS_TEXT)
+	BankItems_ExportFrame_SearchAllRealms.Text:SetText(BANKITEMS_ALL_REALMS_TEXT)
 	BankItems_ExportFrame_SearchAllRealms:SetScript("OnClick", function(self)
 		if (BankItems_Save.SearchAllRealms) then
 			BankItems_Save.SearchAllRealms = false
